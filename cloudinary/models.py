@@ -66,3 +66,9 @@ class CloudinaryField(models.Field):
         defaults = {'form_class': self.default_form_class, 'options': options}
         defaults.update(kwargs)
         return super(CloudinaryField, self).formfield(autosave=False, **defaults)
+
+try:
+    from south.modelsinspector import add_introspection_rules
+    add_introspection_rules([], ["^cloudinary\.models\.CloudinaryField"])
+except:
+    pass
