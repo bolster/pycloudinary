@@ -12,6 +12,7 @@ class CloudinaryField(models.Field):
     def __init__(self, *args, **kwargs):
         options = {'max_length': 100}
         self.default_form_class = kwargs.pop("default_form_class", forms.CloudinaryFileField)
+        self.upload_options = kwargs.pop("cloudinary_options", {})
         options.update(kwargs)
         self.type = options.pop("type", "upload")
         super(CloudinaryField, self).__init__(*args, **options)
@@ -32,10 +33,10 @@ class CloudinaryField(models.Field):
             return value
         else:
             m = re.search('(v(?P<version>\d+)/)?(?P<public_id>.*?)(\.(?P<format>[^.]+))?$', value)
-            return CloudinaryImage(type = self.type, **m.groupdict())
+            return CloudinaryImage(type=self.type, **m.groupdict())
 
     def upload_options(self, model_instance):
-        return {}
+        return self.upload_options
 
     def pre_save(self, model_instance, add):
         value = super(CloudinaryField, self).pre_save(model_instance, add)
