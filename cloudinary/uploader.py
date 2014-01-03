@@ -1,6 +1,7 @@
 # Copyright Cloudinary
 import cloudinary
 from cloudinary import utils
+from cloudinary.api import Error
 import json
 import re
 from poster.encode import multipart_encode
@@ -44,13 +45,27 @@ def build_upload_params(**options):
               "headers": build_custom_headers(options.get("headers")),
               "eager": build_eager(options.get("eager")),
               "use_filename": options.get("use_filename"),
+              "unique_filename": options.get("unique_filename"),
               "discard_original_filename": options.get("discard_original_filename"),
               "invalidate": options.get("invalidate"),
               "notification_url": options.get("notification_url"),
               "eager_notification_url": options.get("eager_notification_url"),
               "eager_async": options.get("eager_async"),
+              "proxy": options.get("proxy"),
+              "folder": options.get("folder"),
+              "overwrite": options.get("overwrite"),
               "tags": options.get("tags") and ",".join(utils.build_array(options["tags"]))}
+    params = dict( [ (k, __safe_value(v)) for (k,v) in params.items()] )
     return params
+
+def __safe_value(v):
+    if isinstance(v, (bool)):
+	if v:
+	    return "1"
+	else: 
+	    return "0"
+    else:
+	return v
 
 def upload(file, **options):
     params = build_upload_params(**options)
@@ -177,7 +192,7 @@ def call_api(action, params, **options):
         file = options["file"]
         if not isinstance(file, basestring):
             datagen, headers = multipart_encode({'file': file})
-        elif not re.match(r'^https?:|^s3:|^data:image\/\w*;base64,([a-zA-Z0-9\/+\n=]+)$', file):
+        elif not re.match(r'^https?:|^s3:|^data:[^;]*;base64,([a-zA-Z0-9\/+\n=]+)$', file):
             datagen, headers = multipart_encode({'file': open(file, "rb")})
         else:
             param_list.append(("file", file))
@@ -188,7 +203,7 @@ def call_api(action, params, **options):
         response = urllib2.urlopen(request).read()
     except urllib2.HTTPError, e:
         if not e.code in [200, 400, 500]:
-            raise Exception("Server returned unexpected status code - %d - %s" % (e.code, e.read()))
+            raise Error("Server returned unexpected status code - %d - %s" % (e.code, e.read()))
         code = e.code
         response = e.read()
 
@@ -196,13 +211,13 @@ def call_api(action, params, **options):
         result = json.loads(response)
     except Exception, e:
         # Error is parsing json
-        raise Exception("Error parsing server response (%d) - %s. Got - %s", code, response, e)
+        raise Error("Error parsing server response (%d) - %s. Got - %s", code, response, e)
 
     if "error" in result:
         if return_error:
             result["error"]["http_code"] = response.code
         else:
-            raise Exception(result["error"]["message"])
+            raise Error(result["error"]["message"])
 
     return result
 

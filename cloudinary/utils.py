@@ -40,6 +40,9 @@ def generate_transformation_string(**options):
     background = options.pop("background", None)
     if background:
         background = background.replace("#", "rgb:")
+    color = options.pop("color", None)
+    if color:
+        color = color.replace("#", "rgb:")
 
     base_transformations = build_array(options.pop("transformation", None))
     if any(isinstance(bs, dict) for bs in base_transformations):
@@ -62,7 +65,7 @@ def generate_transformation_string(**options):
 
     flags = ".".join(build_array(options.pop("flags", None)))
 
-    params = {"w": width, "h": height, "t": named_transformation, "b": background, "e": effect, "c": crop, "a": angle, "bo": border, "fl": flags}
+    params = {"w": width, "h": height, "t": named_transformation, "b": background, "co": color, "e": effect, "c": crop, "a": angle, "bo": border, "fl": flags}
     for param, option in {"q": "quality", "g": "gravity", "p": "prefix", "x": "x",
                           "y": "y", "r": "radius", "d": "default_image", "l": "overlay", "u": "underlay", "o": "opacity",
                           "f": "fetch_format", "pg": "page", "dn": "density", "dl": "delay", "cs": "color_space"}.items():
@@ -118,15 +121,19 @@ def cloudinary_url(source, **options):
         return (original_source, options)
     if re.match(r'^https?:', source):
         source = smart_escape(source)
-    elif format:
-        source = source + "." + format
+    else:
+        source = smart_escape(urllib.unquote(source).decode('utf8') )
+        if format:
+          source = source + "." + format
 
     if cloud_name.startswith("/"):
         prefix = "/res" + cloud_name
     else:
-        secure_distribution = secure_distribution or cloudinary.SHARED_CDN
-
-        if secure:
+        shared_domain =  not private_cdn
+        if secure:        
+            if not secure_distribution or secure_distribution == cloudinary.OLD_AKAMAI_SHARED_CDN:
+              secure_distribution = cloud_name + "-res.cloudinary.com" if private_cdn else cloudinary.SHARED_CDN
+            shared_domain = shared_domain or secure_distribution == cloudinary.SHARED_CDN
             prefix = "https://" + secure_distribution
         else:
             subdomain = "a" + str((zlib.crc32(source) & 0xffffffff)%5 + 1) + "." if cdn_subdomain else ""
@@ -137,7 +144,7 @@ def cloudinary_url(source, **options):
             else:
                 host = "res.cloudinary.com"
             prefix = "http://" + subdomain + host
-        if not private_cdn or (secure and secure_distribution == cloudinary.AKAMAI_SHARED_CDN):
+        if shared_domain:
             prefix += "/" + cloud_name
 
     if shorten and resource_type == "image" and type == "upload":
@@ -159,7 +166,7 @@ def cloudinary_api_url(action = 'upload', **options):
 # Based on ruby's CGI::unescape. In addition does not escape / :
 def smart_escape(string):
     pack = lambda m: '%' + "%".join(["%02X" % x for x in struct.unpack('B'*len(m.group(1)), m.group(1))]).upper()
-    return re.sub(r"([^ a-zA-Z0-9_.-\/:]+)", pack, string).replace(' ', '+')
+    return re.sub(r"([^a-zA-Z0-9_.\-\/:]+)", pack, string)
 
 def random_public_id():
     return base64.urlsafe_b64encode(hashlib.sha1(uuid.uuid4()).digest())[0:16]

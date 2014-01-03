@@ -11,6 +11,10 @@ Cloudinary provides URL and HTTP based APIs that can be easily integrated with a
 
 For Python, Cloudinary provides an egg for simplifying the integration even further.
 
+## Getting started guide
+![](http://res.cloudinary.com/cloudinary/image/upload/see_more_bullet.png)  **Take a look at our [Getting started guide for Python & Django](http://cloudinary.com/documentation/django_integration#getting_started_guide)**.
+
+
 ## Setup ######################################################################
 
 You can install Cloudinary's module using either `easy_install` or `pip` package management tools. For example:
@@ -27,19 +31,19 @@ Accessing an uploaded image with the `sample` public ID through a CDN:
 
     http://res.cloudinary.com/demo/image/upload/sample.jpg
 
-![Sample](https://cloudinary-a.akamaihd.net/demo/image/upload/w_0.4/sample.jpg "Sample")
+![Sample](https://res.cloudinary.com/demo/image/upload/w_0.4/sample.jpg "Sample")
 
 Generating a 150x100 version of the `sample` image and downloading it through a CDN:
 
     http://res.cloudinary.com/demo/image/upload/w_150,h_100,c_fill/sample.jpg
 
-![Sample 150x100](https://cloudinary-a.akamaihd.net/demo/image/upload/w_150,h_100,c_fill/sample.jpg "Sample 150x100")
+![Sample 150x100](https://res.cloudinary.com/demo/image/upload/w_150,h_100,c_fill/sample.jpg "Sample 150x100")
 
 Converting to a 150x100 PNG with rounded corners of 20 pixels: 
 
     http://res.cloudinary.com/demo/image/upload/w_150,h_100,c_fill,r_20/sample.png
 
-![Sample 150x150 Rounded PNG](https://cloudinary-a.akamaihd.net/demo/image/upload/w_150,h_100,c_fill,r_20/sample.png "Sample 150x150 Rounded PNG")
+![Sample 150x150 Rounded PNG](https://res.cloudinary.com/demo/image/upload/w_150,h_100,c_fill,r_20/sample.png "Sample 150x150 Rounded PNG")
 
 For plenty more transformation options, see our [image transformations documentation](http://cloudinary.com/documentation/image_transformations).
 
@@ -47,7 +51,7 @@ Generating a 120x90 thumbnail based on automatic face detection of the Facebook 
  
     http://res.cloudinary.com/demo/image/facebook/c_thumb,g_face,h_90,w_120/billclinton.jpg
     
-![Facebook 90x120](https://cloudinary-a.akamaihd.net/demo/image/facebook/c_thumb,g_face,h_90,w_120/billclinton.jpg "Facebook 90x200")
+![Facebook 90x120](https://res.cloudinary.com/demo/image/facebook/c_thumb,g_face,h_90,w_120/billclinton.jpg "Facebook 90x200")
 
 For more details, see our documentation for embedding [Facebook](http://cloudinary.com/documentation/facebook_profile_pictures) and [Twitter](http://cloudinary.com/documentation/twitter_profile_pictures) profile pictures. 
 
@@ -88,6 +92,8 @@ Same goes for Twitter:
 
     cloudinary.utils.cloudinary_url("billclinton.jpg", type = "twitter_name")
 
+![](http://res.cloudinary.com/cloudinary/image/upload/see_more_bullet.png) **See [our documentation](http://cloudinary.com/documentation/django_image_manipulation) for more information about displaying and transforming images in Python & Django**.                                         
+
 ### Upload
 
 Assuming you have your Cloudinary configuration parameters defined (`cloud_name`, `api_key`, `api_secret`), uploading to Cloudinary is very simple.
@@ -109,7 +115,10 @@ You can also specify your own public ID:
     cloudinary.utils.cloudinary_url("sample_remote.jpg")
 
     http://res.cloudinary.com/demo/image/upload/sample_remote.jpg
-        
+
+![](http://res.cloudinary.com/cloudinary/image/upload/see_more_bullet.png) **See [our documentation](http://cloudinary.com/documentation/django_image_upload) for plenty more options of uploading to the cloud from your Python & Django code or directly from the browser**.
+
+
 ## Django 
 
 ### cloudinary.CloudinaryImage
@@ -228,16 +237,19 @@ Additional resources are available at:
 
 * [Website](http://cloudinary.com)
 * [Documentation](http://cloudinary.com/documentation)
+* [Knowledge Base](http://support.cloudinary.com/forums) 
+* [Documentation for Django integration](http://cloudinary.com/documentation/django_integration)
+* [Django image upload documentation](http://cloudinary.com/documentation/django_image_upload)
+* [Django image manipulation documentation](http://cloudinary.com/documentation/django_image_manipulation)
 * [Image transformations documentation](http://cloudinary.com/documentation/image_transformations)
-* [Upload API documentation](http://cloudinary.com/documentation/upload_images)
 
 ## Support
 
-You can [open an issue through GitHub](https://github.com/cloudinary/cloudinary/issues).
+You can [open an issue through GitHub](https://github.com/cloudinary/pycloudinary/issues).
 
-Contact us at [info@cloudinary.com](mailto:info@cloudinary.com)
+Contact us [http://cloudinary.com/contact](http://cloudinary.com/contact)
 
-Or via Twitter: [@cloudinary](https://twitter.com/#!/cloudinary)
+Stay tuned for updates, tips and tutorials: [Blog](http://cloudinary.com/blog), [Twitter](https://twitter.com/cloudinary), [Facebook](http://www.facebook.com/Cloudinary).
 
 ## License #######################################################################
 

@@ -22,7 +22,7 @@ class TestUtils(unittest.TestCase):
         options = {"secure": True}
         result, options = cloudinary.utils.cloudinary_url("test", **options)
         self.assertEqual(options, {})
-        self.assertEqual(result, "https://cloudinary-a.akamaihd.net/test123/image/upload/test" )
+        self.assertEqual(result, "https://res.cloudinary.com/test123/image/upload/test" )
 
     def test_secure_distribution_overwrite(self):
         """should allow overwriting secure distribution if secure=True"""
@@ -44,7 +44,7 @@ class TestUtils(unittest.TestCase):
         options = {"secure": True, "private_cdn": True}
         result, options = cloudinary.utils.cloudinary_url("test", **options)
         self.assertEqual(options, {})
-        self.assertEqual(result, "https://cloudinary-a.akamaihd.net/test123/image/upload/test" )
+        self.assertEqual(result, "https://test123-res.cloudinary.com/image/upload/test" )
 
     def test_secure_non_akamai(self):
         """should not add cloud_name if private_cdn and secure non akamai secure_distribution"""
@@ -186,7 +186,7 @@ class TestUtils(unittest.TestCase):
         options = {"type": "youtube"}
         result, options = cloudinary.utils.cloudinary_url("http://www.youtube.com/watch?v=d9NF2edxy-M", **options)
         self.assertEqual(options, {})
-        self.assertEqual(result, "http://res.cloudinary.com/test123/image/youtube/http://www.youtube.com/watch%3Fv%3Dd9NF2edxy%2DM" )
+        self.assertEqual(result, "http://res.cloudinary.com/test123/image/youtube/http://www.youtube.com/watch%3Fv%3Dd9NF2edxy-M" )
 
     def test_cname(self):
         """should support extenal cname"""
@@ -336,6 +336,18 @@ class TestUtils(unittest.TestCase):
         result, options = cloudinary.utils.cloudinary_url("test", shorten=True, type="private")
         self.assertEqual(options, {})
         self.assertEqual(result, "http://res.cloudinary.com/test123/image/private/test")
+    
+    def test_escape_public_id(self):
+        """ should escape public_ids """
+        tests = {
+            "a b": "a%20b",
+            "a+b": "a%2Bb",
+            "a%20b": "a%20b",
+            "a-b": "a-b",
+            "a??b": "a%3F%3Fb"};
+        for source, target in tests.items():
+            result, options = cloudinary.utils.cloudinary_url(source)
+            self.assertEquals("http://res.cloudinary.com/test123/image/upload/" + target, result)
 
 if __name__ == '__main__':
     unittest.main()

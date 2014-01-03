@@ -49,10 +49,18 @@ class TestUploader(unittest.TestCase):
         uploader.rename(result["public_id"], result["public_id"]+"2")
         self.assertIsNotNone(api.resource(result["public_id"]+"2"))
         result2 = uploader.upload("tests/favicon.ico")
-        self.assertRaises(Exception, uploader.rename, (result2["public_id"], result["public_id"]+"2"))
+        self.assertRaises(api.Error, uploader.rename, (result2["public_id"], result["public_id"]+"2"))
         uploader.rename(result2["public_id"], result["public_id"]+"2", overwrite=True)
         self.assertEqual(api.resource(result["public_id"]+"2")["format"], "ico")
 
+    @unittest.skipUnless(cloudinary.config().api_secret, "requires api_key/api_secret")
+    def test_use_filename(self):
+        """should successfully take use file name of uploaded file in public id if specified use_filename """
+        result = uploader.upload("tests/logo.png", use_filename = True)
+        self.assertRegexpMatches(result["public_id"], 'logo_[a-z0-9]{6}')
+        result = uploader.upload("tests/logo.png", use_filename = True, unique_filename = False)
+        self.assertEqual(result["public_id"], 'logo')
+    
     @unittest.skipUnless(cloudinary.config().api_secret, "requires api_key/api_secret")
     def test_explicit(self):
         """should support explicit """
