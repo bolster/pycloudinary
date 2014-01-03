@@ -22,6 +22,6 @@ setup(name='cloudinary',
       include_package_data=True,
       zip_safe=False,
       test_suite="tests",
-      install_requires=["poster==0.8.2"],
-      dependency_links=["https://bitbucket.org/cloudinary/poster/get/97d3c6fcb877.tar.gz#egg=poster-0.8.2"]
+      install_requires=["poster==0.8.1"],
+      dependency_links=["https://bitbucket.org/cloudinary/poster/get/97d3c6fcb877.tar.gz#egg=poster-0.8.1"]
       )
