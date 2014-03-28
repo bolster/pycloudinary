@@ -1,10 +1,11 @@
-import cloudinary
-from cloudinary import utils
-import urllib
-import urllib2
+# Copyright Cloudinary
 import json
 import base64
+import sys
 import email.utils
+import cloudinary
+from cloudinary.compat import urllib2, urlencode, to_string, to_bytes, PY3
+from cloudinary import utils
 
 class Error(Exception): pass
 class NotFound(Error): pass
@@ -45,12 +46,25 @@ def resources(**options):
     type = options.pop("type", None)
     uri = ["resources", resource_type]
     if type: uri.append(type)
-    return call_api("get", uri, only(options, "next_cursor", "max_results", "prefix"), **options)
+    return call_api("get", uri, only(options, "next_cursor", "max_results", "prefix", "tags", "context", "moderations", "direction"), **options)
 
 def resources_by_tag(tag, **options):
     resource_type = options.pop("resource_type", "image")
     uri = ["resources", resource_type, "tags", tag]
-    return call_api("get", uri, only(options, "next_cursor", "max_results", "tags"), **options)
+    return call_api("get", uri, only(options, "next_cursor", "max_results", "tags", "context", "moderations", "direction"), **options)
+
+def resources_by_moderation(kind, status, **options):
+    resource_type = options.pop("resource_type", "image")
+    uri = ["resources", resource_type, "moderations", kind, status]
+    return call_api("get", uri, only(options, "next_cursor", "max_results", "tags", "context", "moderations", "direction"), **options)
+
+def resources_by_ids(public_ids, **options):
+    resource_type = options.pop("resource_type", "image")
+    type = options.pop("type", "upload")
+    uri = ["resources", resource_type, type]
+    params = [("public_ids[]", public_id) for public_id in public_ids]
+    optional = list(only(options, "tags", "moderations", "context").items())
+    return call_api("get", uri, params + optional, **options)
 
 def resource(public_id, **options):
     resource_type = options.pop("resource_type", "image")
@@ -58,12 +72,24 @@ def resource(public_id, **options):
     uri = ["resources", resource_type, type, public_id]
     return call_api("get", uri, only(options, "exif", "faces", "colors", "image_metadata", "pages", "max_results"), **options)
 
+def update(public_id, **options):
+    resource_type = options.pop("resource_type", "image")
+    type = options.pop("type", "upload")
+    uri = ["resources", resource_type, type, public_id]
+    upload_options = only(options, "moderation_status", "raw_convert", "ocr", "categorization", "detection", "similarity_search")
+    if "tags" in options: upload_options["tags"] = ",".join(utils.build_array(options["tags"]))
+    if "face_coordinates" in options: upload_options["face_coordinates"] = utils.encode_double_array(options.get("face_coordinates")) 
+    if "context" in options: upload_options["context"] = utils.encode_dict(options.get("context")) 
+    if "auto_tagging" in options: upload_options["auto_tagging"] = float(options.get("auto_tagging"))
+    return call_api("post", uri, upload_options, **options)
+
 def delete_resources(public_ids, **options):
     resource_type = options.pop("resource_type", "image")
     type = options.pop("type", "upload")
     uri = ["resources", resource_type, type]
     params = [("public_ids[]", public_id) for public_id in public_ids]
-    return call_api("delete", uri, params + only(options, "keep_original", "next_cursor").items(), **options)
+    optional = list(only(options, "keep_original", "next_cursor").items())
+    return call_api("delete", uri, params + optional, **options)
 
 def delete_resources_by_prefix(prefix, **options):
     resource_type = options.pop("resource_type", "image")
@@ -75,13 +101,13 @@ def delete_all_resources(**options):
     resource_type = options.pop("resource_type", "image")
     type = options.pop("type", "upload")
     uri = ["resources", resource_type, type]
+    optional = list(only(options, "keep_original", "next_cursor").items())
     return call_api("delete", uri, dict(only(options, "keep_original", "next_cursor"), all=True), **options)
-
 
 def delete_resources_by_tag(tag, **options):
     resource_type = options.pop("resource_type", "image")
     uri = ["resources", resource_type, "tags", tag]
-    return call_api("delete", uri, only(options, "keep_original"), **options)
+    return call_api("delete", uri, only(options, "keep_original", "next_cursor"), **options)
 
 def delete_derived_resources(derived_resource_ids, **options):
     uri = ["derived_resources"]
@@ -129,18 +155,22 @@ def call_api(method, uri, params, **options):
     api_secret = options.pop("api_secret", cloudinary.config().api_secret)
     if not cloud_name: raise Exception("Must supply api_secret")
 
-    data = urllib.urlencode(params)
+    data = to_bytes(urlencode(params))
     api_url = "/".join([prefix, "v1_1", cloud_name] + uri)
     request = urllib2.Request(api_url, data)
     # Add authentication
-    base64string = base64.encodestring('%s:%s' % (api_key, api_secret)).replace('\n', '')
+    byte_value = to_bytes('%s:%s' % (api_key, api_secret))
+    encoded_value = base64.encodebytes(byte_value) if PY3 else base64.encodestring(byte_value)
+    base64string = to_string(encoded_value).replace('\n', '')
     request.add_header("Authorization", "Basic %s" % base64string)
+    request.add_header("User-Agent", cloudinary.USER_AGENT)
     request.get_method = lambda: method.upper()
 
     try:
         response = urllib2.urlopen(request)
         body = response.read()
-    except urllib2.HTTPError, e:
+    except urllib2.HTTPError:
+        e = sys.exc_info()[1]
         exception_class = EXCEPTION_CODES.get(e.code)
         if exception_class:
             response = e
@@ -149,9 +179,11 @@ def call_api(method, uri, params, **options):
             raise GeneralError("Server returned unexpected status code - %d - %s" % (e.code, e.read()))
 
     try:
+        body = to_string(body)
         result = json.loads(body)
-    except Exception, e:
+    except Exception:
         # Error is parsing json
+        e = sys.exc_info()[1]
         raise GeneralError("Error parsing server response (%d) - %s. Got - %s" % (response.code, body, e))
 
     if "error" in result:

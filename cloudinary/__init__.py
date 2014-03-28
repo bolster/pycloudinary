@@ -1,14 +1,18 @@
 from __future__ import absolute_import
 
 import os
-from urlparse import urlparse,parse_qs
+import sys
 
 CF_SHARED_CDN = "d3jpl91pxevbkh.cloudfront.net"
 OLD_AKAMAI_SHARED_CDN = "cloudinary-a.akamaihd.net"
 AKAMAI_SHARED_CDN = "res.cloudinary.com"
 SHARED_CDN = AKAMAI_SHARED_CDN
 
+VERSION = "1.0.16"
+USER_AGENT = "cld-python-" + VERSION
+
 from cloudinary import utils
+from cloudinary.compat import urlparse, parse_qs
 
 def import_django_settings():
     try:
@@ -34,7 +38,7 @@ class Config(object):
               private_cdn = os.environ.get("CLOUDINARY_PRIVATE_CDN") == 'true'
             )
         elif os.environ.get("CLOUDINARY_URL"):
-            uri = urlparse(os.environ.get("CLOUDINARY_URL"))
+            uri = urlparse(os.environ.get("CLOUDINARY_URL").replace("cloudinary://", "http://"))
             for k, v in parse_qs(uri.query).items():
                 self.__dict__[k] = v[0]
             self.update(
