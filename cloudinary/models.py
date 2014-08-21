@@ -3,6 +3,13 @@ from cloudinary import CloudinaryImage, forms, uploader
 from django.db import models
 from django.core.files.uploadedfile import UploadedFile
 
+# Add introspection rules for South, if it's installed.
+try:
+    from south.modelsinspector import add_introspection_rules
+    add_introspection_rules([], ["^cloudinary.models.CloudinaryField"])
+except ImportError:
+    pass
+
 class CloudinaryField(models.Field):
 
     description = "An image stored in Cloudinary"
@@ -35,6 +42,9 @@ class CloudinaryField(models.Field):
             m = re.search('(v(?P<version>\d+)/)?(?P<public_id>.*?)(\.(?P<format>[^.]+))?$', value)
             return CloudinaryImage(type=self.type, **m.groupdict())
 
+    def upload_options_with_filename(self, model_instance, filename):
+        return self.upload_options(model_instance);
+
     def upload_options(self, model_instance):
         return self._upload_options
 
@@ -42,7 +52,7 @@ class CloudinaryField(models.Field):
         value = super(CloudinaryField, self).pre_save(model_instance, add)
         if isinstance(value, UploadedFile):
             options = {"type": self.type}
-            options.update(self.upload_options(model_instance))
+            options.update(self.upload_options_with_filename(model_instance, value.name))
             instance_value = uploader.upload_image(value, **options)
             setattr(model_instance, self.attname, instance_value)
             return self.get_prep_value(instance_value)

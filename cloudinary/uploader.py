@@ -3,6 +3,7 @@ import json, re, sys
 from os.path import basename
 import urllib
 import cloudinary
+import socket
 from cloudinary import utils
 from cloudinary.api import Error
 from cloudinary.poster.encode import multipart_encode
@@ -10,80 +11,17 @@ from cloudinary.poster.streaminghttp import register_openers
 from cloudinary.compat import (urllib2, BytesIO, string_types, urlencode, to_bytes, to_string)
 _initialized = False
 
-def build_eager(transformations):
-    eager = []
-    for tr in utils.build_array(transformations):
-        format = tr.get("format")
-        single_eager = "/".join([x for x in [utils.generate_transformation_string(**tr)[0], format] if x])
-        eager.append(single_eager)
-    return "|".join(eager)
-
-def build_custom_headers(headers):
-    if headers == None:
-        return None
-    elif isinstance(headers, list):
-        pass
-    elif isinstance(headers, dict):
-        headers = [k + ": " + v for k, v in headers.items()]
-    else:
-        return headers
-    return "\n".join(headers)
-
-def build_upload_params(**options):
-    params = {"timestamp": utils.now(),
-              "transformation": utils.generate_transformation_string(**options)[0],
-              "public_id": options.get("public_id"),
-              "callback": options.get("callback"),
-              "format": options.get("format"),
-              "type": options.get("type"),
-              "backup": options.get("backup"),
-              "faces": options.get("faces"),
-              "image_metadata": options.get("image_metadata"),
-              "exif": options.get("exif"),
-              "colors": options.get("colors"),
-              "headers": build_custom_headers(options.get("headers")),
-              "eager": build_eager(options.get("eager")),
-              "use_filename": options.get("use_filename"),
-              "unique_filename": options.get("unique_filename"),
-              "discard_original_filename": options.get("discard_original_filename"),
-              "invalidate": options.get("invalidate"),
-              "notification_url": options.get("notification_url"),
-              "eager_notification_url": options.get("eager_notification_url"),
-              "eager_async": options.get("eager_async"),
-              "proxy": options.get("proxy"),
-              "folder": options.get("folder"),
-              "overwrite": options.get("overwrite"),
-              "tags": options.get("tags") and ",".join(utils.build_array(options["tags"])),
-              "allowed_formats": options.get("allowed_formats") and ",".join(utils.build_array(options["allowed_formats"])),
-              "face_coordinates": utils.encode_double_array(options.get("face_coordinates")),
-              "context": utils.encode_dict(options.get("context")),
-              "moderation": options.get("moderation"),
-              "raw_convert": options.get("raw_convert"),
-              "ocr": options.get("ocr"),
-              "categorization": options.get("categorization"),
-              "detection": options.get("detection"),
-              "similarity_search": options.get("similarity_search"),
-              "auto_tagging": options.get("auto_tagging") and float(options.get("auto_tagging"))}
-    params = dict( [ (k, __safe_value(v)) for (k,v) in params.items()] )
-    return params
-
-def __safe_value(v):
-    if isinstance(v, (bool)):
-        if v:
-            return "1"
-        else: 
-            return "0"
-    else:
-        return v
-
 def upload(file, **options):
-    params = build_upload_params(**options)
+    params = utils.build_upload_params(**options)
     return call_api("upload", params, file = file, **options)
+
+def unsigned_upload(file, upload_preset, **options):
+    return upload(file, upload_preset=upload_preset, unsigned=True, **options)
 
 def upload_image(file, **options):
     result = upload(file, **options)
     return cloudinary.CloudinaryImage(result["public_id"], version=str(result["version"]),
-        format=result["format"], metadata=result)
+        format=result.get("format"), metadata=result)
 
 def upload_large(file, **options):
     """ Upload large raw files. Note that public_id should include an extension for best results. """
@@ -142,10 +80,11 @@ def explicit(public_id, **options):
         "type": options.get("type"),
         "public_id": public_id,
         "callback": options.get("callback"),
-        "headers": build_custom_headers(options.get("headers")),
-        "eager": build_eager(options.get("eager")),
+        "headers": utils.build_custom_headers(options.get("headers")),
+        "eager": utils.build_eager(options.get("eager")),
         "tags": options.get("tags") and ",".join(utils.build_array(options["tags"])),
-        "face_coordinates": utils.encode_double_array(options.get("face_coordinates"))}
+        "face_coordinates": utils.encode_double_array(options.get("face_coordinates")),
+        "custom_coordinates": utils.encode_double_array(options.get("custom_coordinates"))}
      return call_api("explicit", params, **options)
 
 def generate_sprite(tag, **options):
@@ -212,7 +151,10 @@ def call_api(action, params, **options):
     try:
         file_io = None
         return_error = options.get("return_error")
-        params = utils.sign_request(params, options)
+        if options.get("unsigned"):
+          params = utils.cleanup_params(params)
+        else:
+          params = utils.sign_request(params, options)
     
         param_list = []
         for k, v in params.items():
@@ -244,9 +186,16 @@ def call_api(action, params, **options):
         request = urllib2.Request(api_url + "?" + urlencode(param_list), datagen, headers)
         request.add_header("User-Agent", cloudinary.USER_AGENT)
     
+        kw = {}
+        if 'timeout' in options:
+            kw['timeout'] = options['timeout']
+
         code = 200
         try:
-            response = urllib2.urlopen(request).read()
+            response = urllib2.urlopen(request, **kw).read()
+        except socket.error:
+            e = sys.exc_info()[1]
+            raise Error("Socket error: %s" % str(e))
         except urllib2.HTTPError:
             e = sys.exc_info()[1]
             if not e.code in [200, 400, 500]:
@@ -263,7 +212,7 @@ def call_api(action, params, **options):
     
         if "error" in result:
             if return_error:
-                result["error"]["http_code"] = response.code
+                result["error"]["http_code"] = code
             else:
                 raise Error(result["error"]["message"])
     

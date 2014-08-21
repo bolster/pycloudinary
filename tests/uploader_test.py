@@ -127,9 +127,11 @@ class UploaderTest(unittest.TestCase):
         self.assertEqual(coordinates, result["faces"])
 
         different_coordinates = [[122, 32, 111, 152]]
-        uploader.explicit(result["public_id"], face_coordinates = different_coordinates, faces = True, type = "upload")
-        info = api.resource(result["public_id"], faces = True)
+        custom_coordinates = [1,2,3,4]
+        uploader.explicit(result["public_id"], face_coordinates = different_coordinates, custom_coordinates = custom_coordinates, faces = True, type = "upload")
+        info = api.resource(result["public_id"], faces = True, coordinates = True)
         self.assertEqual(different_coordinates, info["faces"])
+        self.assertEqual({"faces": different_coordinates, "custom": [custom_coordinates]}, info["coordinates"])
     
     @unittest.skipUnless(cloudinary.config().api_secret, "requires api_key/api_secret")
     def test_context(self):
@@ -146,37 +148,25 @@ class UploaderTest(unittest.TestCase):
   
         self.assertEqual(resource["moderation"][0]["status"], "pending")
         self.assertEqual(resource["moderation"][0]["kind"], "manual")
-    
-    @unittest.skipUnless(cloudinary.config().api_secret, "requires api_key/api_secret")
-    def test_ocr_info(self):
-        """ should support requesting ocr info """
-        with self.assertRaisesRegexp(api.Error, 'Illegal value'): 
-            uploader.upload("tests/logo.png", ocr="illegal")
-    
+        
     @unittest.skipUnless(cloudinary.config().api_secret, "requires api_key/api_secret")
     def test_raw_conversion(self):
         """ should support requesting raw_convert """ 
-        with self.assertRaisesRegexp(api.Error, 'Illegal value'): 
+        with self.assertRaisesRegexp(api.Error, 'illegal is not a valid'): 
             uploader.upload("tests/docx.docx", raw_convert="illegal", resource_type="raw")
   
     @unittest.skipUnless(cloudinary.config().api_secret, "requires api_key/api_secret")
     def test_categorization(self):
         """ should support requesting categorization """
-        with self.assertRaisesRegexp(api.Error, 'Illegal value'): 
+        with self.assertRaisesRegexp(api.Error, 'illegal is not a valid'): 
             uploader.upload("tests/logo.png", categorization="illegal")
 
     @unittest.skipUnless(cloudinary.config().api_secret, "requires api_key/api_secret")
     def test_detection(self):
         """ should support requesting detection """
-        with self.assertRaisesRegexp(api.Error, 'Illegal value'): 
+        with self.assertRaisesRegexp(api.Error, 'illegal is not a valid'): 
             uploader.upload("tests/logo.png", detection="illegal")
 
-    @unittest.skipUnless(cloudinary.config().api_secret, "requires api_key/api_secret")
-    def test_similarity_search(self):
-        """ should support requesting similarity_search """
-        with self.assertRaisesRegexp(api.Error, 'Illegal value'): 
-            uploader.upload("tests/logo.png", similarity_search="illegal")
-  
     @unittest.skipUnless(cloudinary.config().api_secret, "requires api_key/api_secret")
     def test_auto_tagging(self):
         """ should support requesting auto_tagging """
@@ -188,6 +178,19 @@ class UploaderTest(unittest.TestCase):
         """ should uploading large raw files """ 
         uploader.upload_large("tests/docx.docx")  
 
+    @unittest.skipUnless(cloudinary.config().api_secret, "requires api_key/api_secret")
+    def test_upload_preset(self):
+        """ should support unsigned uploading using presets """
+        preset = api.create_upload_preset(folder="upload_folder", unsigned=True)
+        result = uploader.unsigned_upload("tests/logo.png", preset["name"])
+        self.assertRegexpMatches(result["public_id"], '^upload_folder\/[a-z0-9]+$')
+        api.delete_upload_preset(preset["name"])
+
+    @unittest.skipUnless(cloudinary.config().api_secret, "requires api_key/api_secret")
+    def test_background_removal(self):
+        """ should support requesting background_removal """
+        with self.assertRaisesRegexp(api.Error, 'illegal is not a valid'): 
+            uploader.upload("tests/logo.png", background_removal="illegal")
 
 if __name__ == '__main__':
     unittest.main()

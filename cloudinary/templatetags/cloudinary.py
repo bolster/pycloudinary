@@ -11,16 +11,26 @@ from cloudinary.forms import CloudinaryJsFileField, cl_init_js_callbacks
 
 register = template.Library()
 
-@register.simple_tag
-def cloudinary_url(source, options_dict={}, **options):
+@register.simple_tag(takes_context=True)
+def cloudinary_url(context, source, options_dict={}, **options):
     options = dict(options_dict, **options)
+    try:
+        if context['request'].is_secure() and 'secure' not in options:
+            options['secure'] = True
+    except KeyError:
+        pass
     if not isinstance(source, CloudinaryImage):
         source = CloudinaryImage(source)
-    return source.build_url(**options) 
+    return source.build_url(**options)
 
-@register.simple_tag(name='cloudinary')
-def cloudinary_tag(image, options_dict={}, **options):
+@register.simple_tag(name='cloudinary', takes_context=True)
+def cloudinary_tag(context, image, options_dict={}, **options):
     options = dict(options_dict, **options)
+    try:
+        if context['request'].is_secure() and 'secure' not in options:
+            options['secure'] = True
+    except KeyError:
+        pass
     if not isinstance(image, CloudinaryImage):
         image = CloudinaryImage(image)
     return image.image(**options)
@@ -35,7 +45,7 @@ def cloudinary_direct_upload_field(field_name="image", request=None):
 """Deprecated - please use cloudinary_direct_upload_field, or a proper form"""
 @register.inclusion_tag('cloudinary_direct_upload.html')
 def cloudinary_direct_upload(callback_url, **options):
-    params = uploader.build_upload_params(callback=callback_url, **options)
+    params = utils.build_upload_params(callback=callback_url, **options)
     params = utils.sign_request(params, options)    
     
     api_url = utils.cloudinary_api_url("upload", resource_type=options.get("resource_type", "image"), upload_prefix=options.get("upload_prefix"))
