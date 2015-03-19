@@ -20,7 +20,7 @@ class UploaderTest(unittest.TestCase):
     @unittest.skipUnless(cloudinary.config().api_secret, "requires api_key/api_secret")
     def test_upload_url(self):
         """should successfully upload file by url """
-        result = uploader.upload("http://cloudinary.com/images/logo.png")
+        result = uploader.upload("http://cloudinary.com/images/old_logo.png")
         self.assertEqual(result["width"], 241)
         self.assertEqual(result["height"], 51)
         expected_signature = utils.api_sign_request(dict(public_id=result["public_id"], version=result["version"]), cloudinary.config().api_secret)
@@ -29,7 +29,7 @@ class UploaderTest(unittest.TestCase):
     @unittest.skipUnless(cloudinary.config().api_secret, "requires api_key/api_secret")
     def test_upload_unicode_url(self):
         """should successfully upload file by unicode url """
-        result = uploader.upload(u"http://cloudinary.com/images/logo.png")
+        result = uploader.upload(u"http://cloudinary.com/images/old_logo.png")
         self.assertEqual(result["width"], 241)
         self.assertEqual(result["height"], 51)
         expected_signature = utils.api_sign_request(dict(public_id=result["public_id"], version=result["version"]), cloudinary.config().api_secret)
@@ -176,7 +176,8 @@ class UploaderTest(unittest.TestCase):
     @unittest.skipUnless(cloudinary.config().api_secret, "requires api_key/api_secret")
     def test_upload_large(self):
         """ should uploading large raw files """ 
-        uploader.upload_large("tests/docx.docx")  
+        resource = uploader.upload_large("tests/docx.docx", tags="upload_large_tag")
+        self.assertEqual(["upload_large_tag"], resource["tags"])
 
     @unittest.skipUnless(cloudinary.config().api_secret, "requires api_key/api_secret")
     def test_upload_preset(self):
@@ -189,7 +190,7 @@ class UploaderTest(unittest.TestCase):
     @unittest.skipUnless(cloudinary.config().api_secret, "requires api_key/api_secret")
     def test_background_removal(self):
         """ should support requesting background_removal """
-        with self.assertRaisesRegexp(api.Error, 'illegal is not a valid'): 
+        with self.assertRaisesRegexp(api.Error, 'is invalid'): 
             uploader.upload("tests/logo.png", background_removal="illegal")
 
 if __name__ == '__main__':

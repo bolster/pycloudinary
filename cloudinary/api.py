@@ -5,7 +5,7 @@ import sys
 import email.utils
 import socket
 import cloudinary
-from cloudinary.compat import urllib2, urlencode, to_string, to_bytes, PY3
+from cloudinary.compat import urllib2, urlencode, to_string, to_bytes, PY3, HTTPError
 from cloudinary import utils
 
 class Error(Exception): pass
@@ -90,26 +90,26 @@ def delete_resources(public_ids, **options):
     type = options.pop("type", "upload")
     uri = ["resources", resource_type, type]
     params = [("public_ids[]", public_id) for public_id in public_ids]
-    optional = list(only(options, "keep_original", "next_cursor").items())
+    optional = list(only(options, "keep_original", "next_cursor", "invalidate").items())
     return call_api("delete", uri, params + optional, **options)
 
 def delete_resources_by_prefix(prefix, **options):
     resource_type = options.pop("resource_type", "image")
     type = options.pop("type", "upload")
     uri = ["resources", resource_type, type]
-    return call_api("delete", uri, dict(only(options, "keep_original", "next_cursor"), prefix=prefix), **options)
+    return call_api("delete", uri, dict(only(options, "keep_original", "next_cursor", "invalidate"), prefix=prefix), **options)
 
 def delete_all_resources(**options):
     resource_type = options.pop("resource_type", "image")
     type = options.pop("type", "upload")
     uri = ["resources", resource_type, type]
     optional = list(only(options, "keep_original", "next_cursor").items())
-    return call_api("delete", uri, dict(only(options, "keep_original", "next_cursor"), all=True), **options)
+    return call_api("delete", uri, dict(only(options, "keep_original", "next_cursor", "invalidate"), all=True), **options)
 
 def delete_resources_by_tag(tag, **options):
     resource_type = options.pop("resource_type", "image")
     uri = ["resources", resource_type, "tags", tag]
-    return call_api("delete", uri, only(options, "keep_original", "next_cursor"), **options)
+    return call_api("delete", uri, only(options, "keep_original", "next_cursor", "invalidate"), **options)
 
 def delete_derived_resources(derived_resource_ids, **options):
     uri = ["derived_resources"]
@@ -174,6 +174,12 @@ def create_upload_preset(**options):
     params.update(only(options, "unsigned", "disallow_public_id", "name"))
     return call_api("post", uri, params, **options)
 
+def root_folders(**options):
+    return call_api("get", ["folders"], {}, **options)
+
+def subfolders(of_folder_path, **options):
+    return call_api("get", ["folders", of_folder_path], {}, **options)
+
 def call_api(method, uri, params, **options):
     prefix = options.pop("upload_prefix", cloudinary.config().upload_prefix) or "https://api.cloudinary.com"
     cloud_name = options.pop("cloud_name", cloudinary.config().cloud_name)
@@ -200,10 +206,7 @@ def call_api(method, uri, params, **options):
     try:
         response = urllib2.urlopen(request, **kw)
         body = response.read()
-    except socket.error:
-        e = sys.exc_info()[1]
-        raise GeneralError("Socket Error: %s" % (str(e)))
-    except urllib2.HTTPError:
+    except HTTPError:
         e = sys.exc_info()[1]
         exception_class = EXCEPTION_CODES.get(e.code)
         if exception_class:
@@ -211,6 +214,9 @@ def call_api(method, uri, params, **options):
             body = response.read()
         else:
             raise GeneralError("Server returned unexpected status code - %d - %s" % (e.code, e.read()))
+    except socket.error:
+        e = sys.exc_info()[1]
+        raise GeneralError("Socket Error: %s" % (str(e)))
 
     try:
         body = to_string(body)
